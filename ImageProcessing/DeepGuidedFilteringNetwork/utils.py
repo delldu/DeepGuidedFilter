@@ -10,7 +10,9 @@ from skimage import img_as_ubyte
 from skimage.io import imread
 from skimage.color import grey2rgb
 from skimage.transform import resize
-from skimage.measure import compare_mse, compare_psnr, compare_ssim
+# from skimage.measure import compare_mse, compare_psnr, compare_ssim
+from skimage import measure
+
 
 class Config(object):
     def __init__(self, **params):
@@ -25,9 +27,9 @@ def tensor_to_img(tensor, transpose=False):
     return im
 
 def calc_metric_with_np(pre_im, gt_im, multichannel=True):
-    return compare_mse(pre_im, gt_im),\
-           compare_psnr(pre_im, gt_im),\
-           compare_ssim(pre_im, gt_im, multichannel=multichannel)
+    return measure.compare_mse(pre_im, gt_im),\
+           measure.compare_psnr(pre_im, gt_im),\
+           measure.compare_ssim(pre_im, gt_im, multichannel=multichannel)
 
 def calc_metric_per_img(im_name, pre_path, gt_path, opts={}):
     pre_im_path = os.path.join(pre_path, im_name)
