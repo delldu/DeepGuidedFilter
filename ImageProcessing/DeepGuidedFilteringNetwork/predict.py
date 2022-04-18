@@ -12,6 +12,8 @@ from module import DeepGuidedFilter, DeepGuidedFilterAdvanced, DeepGuidedFilterC
 
 from skimage.io import imsave
 
+import pdb
+
 parser = argparse.ArgumentParser(description='Predict with Deep Guided Filtering Networks')
 parser.add_argument('--task',        type=str, default='auto_ps',                  help='TASK')
 parser.add_argument('--img_path',    type=str, default=None,                       help='IMG_PATH')
@@ -39,6 +41,8 @@ if not os.path.isdir(args.save_folder):
     os.makedirs(args.save_folder)
 
 # Model
+# args.model -- 'deep_guided_filter_advanced'
+
 if args.model in ['guided_filter', 'deep_guided_filter']:
     model = DeepGuidedFilter()
 elif args.model == 'deep_guided_filter_advanced':
@@ -58,13 +62,19 @@ model2name = {'guided_filter': 'lr',
               'deep_conv_guided_filter_adv': 'conv_hr_ad'}
 model_path = os.path.join('models', args.task, '{}_net_latest.pth'.format(model2name[args.model]))
 
+# pp args.task -- 'auto_ps'
+
 if args.model == 'guided_filter':
     model.init_lr(model_path)
 else:
     model.load_state_dict(torch.load(model_path))
 
+# model_path -- 'models/auto_ps/hr_ad_net_latest.pth'
+# img_list -- ['../../images/auto_ps.jpg']
+
 # data set
 test_data = PreSuDataset(img_list, low_size=args.low_size)
+# pp args.low_size -- 64
 
 # GPU
 if args.gpu >= 0:
@@ -81,7 +91,17 @@ for idx, imgs in enumerate(test_data):
         with torch.cuda.device(args.gpu):
             lr_x = lr_x.cuda()
             hr_x = hr_x.cuda()
-    imgs = model(Variable(lr_x), Variable(hr_x)).data.cpu()
+
+    # (Pdb) pp lr_x.size()
+    # torch.Size([1, 3, 96, 64])
+    # (Pdb) pp hr_x.size()
+    # torch.Size([1, 3, 1536, 1024])
+
+    # imgs = model(Variable(lr_x), Variable(hr_x)).data.cpu()
+
+    imgs = model(lr_x, hr_x).data.cpu()
+    # (Pdb) imgs.size()
+    # torch.Size([1, 3, 1536, 1024])
 
     for img in imgs:
         img = tensor_to_img(img, transpose=True)

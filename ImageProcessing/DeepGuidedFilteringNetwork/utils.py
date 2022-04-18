@@ -8,7 +8,7 @@ from multiprocessing import Pool
 
 from skimage import img_as_ubyte
 from skimage.io import imread
-from skimage.color import grey2rgb
+from skimage.color import gray2rgb
 from skimage.transform import resize
 # from skimage.measure import compare_mse, compare_psnr, compare_ssim
 from skimage import measure
@@ -41,7 +41,7 @@ def calc_metric_per_img(im_name, pre_path, gt_path, opts={}):
     pre = img_as_ubyte(imread(pre_im_path))
     gt  = img_as_ubyte(imread(gt_im_path))
     if gt.ndim == 2:
-        gt = grey2rgb(gt)
+        gt = gray2rgb(gt)
     if pre.shape != gt.shape:
         gt = img_as_ubyte(resize(gt, pre.shape[:2], mode='reflect'))
 

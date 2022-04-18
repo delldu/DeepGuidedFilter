@@ -3,7 +3,7 @@ import argparse
 
 import numpy as np
 
-from skimage.color import grey2rgb
+from skimage.color import gray2rgb
 from skimage.io import imread, imsave
 
 parser = argparse.ArgumentParser(description='Make A-B pairs.')
@@ -24,7 +24,7 @@ with open(file) as f:
         line = line.strip()
 
         A = imread(os.path.join(ROOT, line.replace('.png', '.jpg')))
-        B = grey2rgb(imread(os.path.join(ROOT, line)))
+        B = gray2rgb(imread(os.path.join(ROOT, line)))
         out = np.hstack([A, B])
 
         imsave(os.path.join(target_folder, line), out)

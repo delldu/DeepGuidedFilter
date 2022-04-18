@@ -104,7 +104,9 @@ class PreSuDataset(data.Dataset):
         self.loader = loader
 
         def append(imgs):
-            imgs.append(transforms.Scale(low_size, interpolation=Image.NEAREST)(imgs[0]))
+            # imgs.append(transforms.Scale(low_size, interpolation=Image.NEAREST)(imgs[0]))
+            imgs.append(transforms.Resize(low_size, interpolation=Image.NEAREST)(imgs[0]))
+
             return imgs
 
         self.transform = Compose([
