@@ -41,7 +41,9 @@ def get_model():
 
     todos.data.mkdir("output")
     if not os.path.exists("output/image_autops.torch"):
-        model.save("output/image_autops.torch")
+        # CUDA Model run OK both on all GPU/CPU
+        cuda_model = model.cuda()
+        cuda_model.save("output/image_autops.torch")
 
     return model, device
 
@@ -50,7 +52,6 @@ def model_forward(model, device, input_tensor):
     input_tensor = input_tensor.to(device)
     with torch.no_grad():
         output_tensor = model(input_tensor)
-    print(output_tensor.min(), output_tensor.max())
 
     return output_tensor
 
