@@ -268,33 +268,3 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         # x_lr
         x_lr = F.interpolate(x_hr, (128, 128), mode="bilinear", align_corners=True)
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
-
-
-class DeepGuidedFilterConvGF(nn.Module):
-    def __init__(self, radius=1, layer=5):
-        super(DeepGuidedFilterConvGF, self).__init__()
-        self.lr = build_lr_net(layer=layer)
-        self.gf = ConvGuidedFilter(radius, norm=AdaptiveNorm)
-
-    def forward(self, x_lr, x_hr):
-        return self.gf(x_lr, self.lr(x_lr), x_hr).clamp(0, 1)
-
-    # def init_lr(self, path):
-    #     self.lr.load_state_dict(torch.load(path))
-
-
-class DeepGuidedFilterGuidedMapConvGF(DeepGuidedFilterConvGF):
-    def __init__(self, radius=1, dilation=0, c=16, layer=5):
-        super(DeepGuidedFilterGuidedMapConvGF, self).__init__(radius, layer)
-
-        self.guided_map = nn.Sequential(
-            nn.Conv2d(3, c, 1, bias=False)
-            if dilation == 0
-            else nn.Conv2d(3, c, 3, padding=dilation, dilation=dilation, bias=False),
-            AdaptiveNorm(c),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(c, 3, 1),
-        )
-
-    def forward(self, x_lr, x_hr):
-        return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr)).clamp(0, 1)

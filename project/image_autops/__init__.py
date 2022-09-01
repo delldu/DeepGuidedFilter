@@ -18,7 +18,6 @@ import torch
 
 import redos
 import todos
-
 from . import guided
 
 import pdb
@@ -41,9 +40,7 @@ def get_model():
 
     todos.data.mkdir("output")
     if not os.path.exists("output/image_autops.torch"):
-        # CUDA Model run OK both on all GPU/CPU
-        cuda_model = model.cuda()
-        cuda_model.save("output/image_autops.torch")
+        model.save("output/image_autops.torch")
 
     return model, device
 
