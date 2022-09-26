@@ -41,6 +41,8 @@ def get_model():
         model = torch.jit.script(model)
         model.save("output/image_autops.torch")
 
+    print(f"Running on {device} ...")
+
     return model, device
 
 
