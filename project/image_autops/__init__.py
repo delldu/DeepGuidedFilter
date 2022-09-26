@@ -36,10 +36,9 @@ def get_model():
     model = model.to(device)
     model.eval()
 
-    model = torch.jit.script(model)
-
     todos.data.mkdir("output")
     if not os.path.exists("output/image_autops.torch"):
+        model = torch.jit.script(model)
         model.save("output/image_autops.torch")
 
     return model, device
