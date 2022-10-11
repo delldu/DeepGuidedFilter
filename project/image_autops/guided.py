@@ -67,10 +67,10 @@ class FastGuidedFilter(nn.Module):
         n_lry, c_lry, h_lry, w_lry = lr_y.size()
         n_hrx, c_hrx, h_hrx, w_hrx = hr_x.size()
 
-        assert n_lrx == n_lry and n_lry == n_hrx
-        assert c_lrx == c_hrx and (c_lrx == 1 or c_lrx == c_lry)
-        assert h_lrx == h_lry and w_lrx == w_lry
-        assert h_lrx > 2 * self.r + 1 and w_lrx > 2 * self.r + 1
+        # assert n_lrx == n_lry and n_lry == n_hrx
+        # assert c_lrx == c_hrx and (c_lrx == 1 or c_lrx == c_lry)
+        # assert h_lrx == h_lry and w_lrx == w_lry
+        # assert h_lrx > 2 * self.r + 1 and w_lrx > 2 * self.r + 1
 
         ## N
         # N = self.boxfilter(lr_x.data.new().resize_((1, 1, h_lrx, w_lrx)).fill_(1.0))

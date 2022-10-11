@@ -36,10 +36,14 @@ def get_model():
     model = model.to(device)
     model.eval()
 
-    print(f"Running on {device} ...")
-    model = torch.jit.script(model)
+    print(f"Running model on {device} ...")
 
     todos.data.mkdir("output")
+    if not os.path.exists("output/image_autops.so"):
+        input = torch.randn(1, 3, 512, 512)
+        todos.model.compile(model, device, input, "output/image_autops.so")
+
+    model = torch.jit.script(model)
     if not os.path.exists("output/image_autops.torch"):
         model.save("output/image_autops.torch")
 
