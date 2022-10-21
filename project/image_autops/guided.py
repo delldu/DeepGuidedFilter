@@ -9,7 +9,7 @@
 # ***
 # ************************************************************************************/
 #
-
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -264,7 +264,43 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         )
         self.guided_map.apply(weights_init_identity)
 
-    def forward(self, x_hr):
+    def forward_x(self, x_hr):
         # x_lr
         x_lr = F.interpolate(x_hr, (128, 128), mode="bilinear", align_corners=True)
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
+
+    def forward(self, x):
+        # Define max GPU/CPU memory -- 1.5G
+        max_h = 1024
+        max_W = 1024
+        multi_times = 1
+
+        # Need Resize ?
+        B, C, H, W = x.size()
+        if H > max_h or W > max_W:
+            s = min(max_h / H, max_W / W)
+            SH, SW = int(s * H), int(s * W)
+            resize_x = F.interpolate(x, size=(SH, SW), mode="bilinear", align_corners=False)
+        else:
+            resize_x = x
+
+        # Need Zero Pad ?
+        ZH, ZW = resize_x.size(2), resize_x.size(3)
+        if ZH % multi_times != 0 or ZW % multi_times != 0:
+            NH = multi_times * math.ceil(ZH / multi_times)
+            NW = multi_times * math.ceil(ZW / multi_times)
+            resize_zeropad_x = resize_x.new_zeros(B, C, NH, NW)
+            resize_zeropad_x[:, :, 0:ZH, 0:ZW] = resize_x
+        else:
+            resize_zeropad_x = resize_x
+
+        # MS Begin
+        y = self.forward_x(resize_zeropad_x).cpu()
+        del resize_zeropad_x, resize_x # Release memory !!!
+
+        y = y[:, :, 0 : ZH, 0 : ZW]  # Remove Zero Pads
+        if ZH != H or ZW != W:
+            y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)
+        # MS End
+
+        return y
