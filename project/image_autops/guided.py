@@ -9,7 +9,6 @@
 # ***
 # ************************************************************************************/
 #
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -140,16 +139,16 @@ class GuidedFilter(nn.Module):
 
 
 class ConvGuidedFilter(nn.Module):
-    def __init__(self, radius=1, norm=nn.BatchNorm2d):
+    def __init__(self, radius=1):
         super(ConvGuidedFilter, self).__init__()
 
         self.box_filter = nn.Conv2d(3, 3, kernel_size=3, padding=radius, dilation=radius, bias=False, groups=3)
         self.conv_a = nn.Sequential(
             nn.Conv2d(6, 32, kernel_size=1, bias=False),
-            norm(32),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, kernel_size=1, bias=False),
-            norm(32),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 3, kernel_size=1, bias=False),
         )
@@ -214,23 +213,23 @@ class AdaptiveNorm(nn.Module):
         return self.w_0 * x + self.w_1 * self.bn(x)
 
 
-def build_lr_net(norm=AdaptiveNorm, layer=5):
+def build_lr_net(layer=5):
     layers = [
         nn.Conv2d(3, 24, kernel_size=3, stride=1, padding=1, dilation=1, bias=False),
-        norm(24),
+        AdaptiveNorm(24),
         nn.LeakyReLU(0.2, inplace=True),
     ]
 
     for l in range(1, layer):
         layers += [
             nn.Conv2d(24, 24, kernel_size=3, stride=1, padding=2 ** l, dilation=2 ** l, bias=False),
-            norm(24),
+            AdaptiveNorm(24),
             nn.LeakyReLU(0.2, inplace=True),
         ]
 
     layers += [
         nn.Conv2d(24, 24, kernel_size=3, stride=1, padding=1, dilation=1, bias=False),
-        norm(24),
+        AdaptiveNorm(24),
         nn.LeakyReLU(0.2, inplace=True),
         nn.Conv2d(24, 3, kernel_size=1, stride=1, padding=0, dilation=1),
     ]
@@ -270,10 +269,10 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
 
     def forward(self, x):
-        # Define max GPU/CPU memory -- 1.5G
+        # Define max GPU/CPU memory -- 2G
         max_h = 1024
         max_W = 1024
-        multi_times = 1
+        multi_times = 4
 
         # Need Resize ?
         B, C, H, W = x.size()
@@ -284,23 +283,18 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         else:
             resize_x = x
 
-        # Need Zero Pad ?
-        ZH, ZW = resize_x.size(2), resize_x.size(3)
-        if ZH % multi_times != 0 or ZW % multi_times != 0:
-            NH = multi_times * math.ceil(ZH / multi_times)
-            NW = multi_times * math.ceil(ZW / multi_times)
-            resize_zeropad_x = resize_x.new_zeros(B, C, NH, NW)
-            resize_zeropad_x[:, :, 0:ZH, 0:ZW] = resize_x
+        # Need Pad ?
+        PH, PW = resize_x.size(2), resize_x.size(3)
+        if PH % multi_times != 0 or PW % multi_times != 0:
+            r_pad = multi_times - (PW % multi_times)
+            b_pad = multi_times - (PH % multi_times)
+            resize_pad_x = F.pad(resize_x, (0, r_pad, 0, b_pad), mode="replicate")
         else:
-            resize_zeropad_x = resize_x
+            resize_pad_x = resize_x
 
-        # MS Begin
-        y = self.forward_x(resize_zeropad_x).cpu()
-        del resize_zeropad_x, resize_x # Release memory !!!
+        y = self.forward_x(resize_pad_x)
 
-        y = y[:, :, 0 : ZH, 0 : ZW]  # Remove Zero Pads
-        if ZH != H or ZW != W:
-            y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)
-        # MS End
+        y = y[:, :, 0:PH, 0:PW]  # Remove Pads
+        y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False) # Remove Resize
 
         return y

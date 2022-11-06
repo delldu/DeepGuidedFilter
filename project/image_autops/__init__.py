@@ -74,4 +74,3 @@ def image_predict(input_files, output_dir):
 
         todos.data.save_tensor([orig_tensor, predict_tensor], output_file)
     todos.model.reset_device()
-
