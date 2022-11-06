@@ -258,16 +258,18 @@ class DeepGuidedFilter(nn.Module):
 class DeepGuidedFilterAdvanced(DeepGuidedFilter):
     def __init__(self, radius=1, eps=1e-8):
         super(DeepGuidedFilterAdvanced, self).__init__(radius, eps)
+        # Define max GPU/CPU memory -- 2G
+        self.MAX_H = 1024
+        self.MAX_W = 1024
+        self.MAX_TIMES = 4
 
         self.guided_map = nn.Sequential(
             nn.Conv2d(3, 15, 1, bias=False), AdaptiveNorm(15), nn.LeakyReLU(0.2, inplace=True), nn.Conv2d(15, 3, 1)
         )
         self.load_weights()
 
-    def load_weights(self):
+    def load_weights(self, model_path="models/image_autops.pth"):
         self.guided_map.apply(weights_init_identity)
-
-        model_path = "models/image_autops.pth"
         cdir = os.path.dirname(__file__)
         checkpoint = model_path if cdir == "" else cdir + "/" + model_path
         self.load_state_dict(torch.load(checkpoint))
@@ -281,18 +283,13 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
 class Autops(nn.Module):
     def __init__(self):
         super(Autops, self).__init__()
-        self.base_model = DeepGuidedFilterAdvanced()
+        self.backbone = DeepGuidedFilterAdvanced().eval()
 
     def forward(self, x):
-        # Define max GPU/CPU memory -- 2G
-        max_h = 1024
-        max_W = 1024
-        multi_times = 4
-
         # Need Resize ?
         B, C, H, W = x.size()
-        if H > max_h or W > max_W:
-            s = min(max_h / H, max_W / W)
+        if H > self.backbone.MAX_H or W > self.backbone.MAX_W:
+            s = min(self.backbone.MAX_H / H, self.backbone.MAX_W / W)
             SH, SW = int(s * H), int(s * W)
             resize_x = F.interpolate(x, size=(SH, SW), mode="bilinear", align_corners=False)
         else:
@@ -300,14 +297,15 @@ class Autops(nn.Module):
 
         # Need Pad ?
         PH, PW = resize_x.size(2), resize_x.size(3)
-        if PH % multi_times != 0 or PW % multi_times != 0:
-            r_pad = multi_times - (PW % multi_times)
-            b_pad = multi_times - (PH % multi_times)
+        if PH % self.backbone.MAX_TIMES != 0 or PW % self.backbone.MAX_TIMES != 0:
+            r_pad = self.backbone.MAX_TIMES - (PW % self.backbone.MAX_TIMES)
+            b_pad = self.backbone.MAX_TIMES - (PH % self.backbone.MAX_TIMES)
             resize_pad_x = F.pad(resize_x, (0, r_pad, 0, b_pad), mode="replicate")
         else:
             resize_pad_x = resize_x
 
-        y = self.base_model(resize_pad_x)
+        with torch.no_grad():
+            y = self.backbone(resize_pad_x)
 
         y = y[:, :, 0:PH, 0:PW]  # Remove Pads
         y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)  # Remove Resize

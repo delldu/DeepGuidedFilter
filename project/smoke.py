@@ -33,15 +33,13 @@ if __name__ == "__main__":
         h = random.randint(0, 32)
         w = random.randint(0, 32)
         x = torch.randn(B, C, H + h, W + w)
+        # print("x: ", x.size())
 
-        try:
-            start_time = time.time()
-            with torch.no_grad():
-                y = model(x.to(device))
-            torch.cuda.synchronize()
-            mean_time += time.time() - start_time
-        except:
-            print("x: ", x.size())
+        start_time = time.time()
+        with torch.no_grad():
+            y = model(x.to(device))
+        torch.cuda.synchronize()
+        mean_time += time.time() - start_time
 
     mean_time /= N
     print(f"Mean spend {mean_time:0.4f} seconds")
