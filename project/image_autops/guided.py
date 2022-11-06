@@ -9,6 +9,7 @@
 # ***
 # ************************************************************************************/
 #
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -255,18 +256,32 @@ class DeepGuidedFilter(nn.Module):
 
 
 class DeepGuidedFilterAdvanced(DeepGuidedFilter):
-    def __init__(self, radius=1, eps=1e-4):
+    def __init__(self, radius=1, eps=1e-8):
         super(DeepGuidedFilterAdvanced, self).__init__(radius, eps)
 
         self.guided_map = nn.Sequential(
             nn.Conv2d(3, 15, 1, bias=False), AdaptiveNorm(15), nn.LeakyReLU(0.2, inplace=True), nn.Conv2d(15, 3, 1)
         )
+        self.load_weights()
+
+    def load_weights(self):
         self.guided_map.apply(weights_init_identity)
 
-    def forward_x(self, x_hr):
+        model_path = "models/image_autops.pth"
+        cdir = os.path.dirname(__file__)
+        checkpoint = model_path if cdir == "" else cdir + "/" + model_path
+        self.load_state_dict(torch.load(checkpoint))
+
+    def forward(self, x_hr):
         # x_lr
         x_lr = F.interpolate(x_hr, (128, 128), mode="bilinear", align_corners=True)
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
+
+
+class Autops(nn.Module):
+    def __init__(self):
+        super(Autops, self).__init__()
+        self.base_model = DeepGuidedFilterAdvanced()
 
     def forward(self, x):
         # Define max GPU/CPU memory -- 2G
@@ -292,9 +307,9 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         else:
             resize_pad_x = resize_x
 
-        y = self.forward_x(resize_pad_x)
+        y = self.base_model(resize_pad_x)
 
         y = y[:, :, 0:PH, 0:PW]  # Remove Pads
-        y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False) # Remove Resize
+        y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)  # Remove Resize
 
         return y

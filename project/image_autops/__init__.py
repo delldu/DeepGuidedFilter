@@ -21,32 +21,36 @@ from . import guided
 import pdb
 
 
-def get_model():
-    """Create model."""
-
-    model_path = "models/image_autops.pth"
-    cdir = os.path.dirname(__file__)
-    checkpoint = model_path if cdir == "" else cdir + "/" + model_path
+def get_tvm_model():
+    """
+    TVM model base on torch.jit.trace, much more orignal than torch.jit.script
+    That's why we construct it from DeepGuidedFilterAdvanced
+    """
 
     model = guided.DeepGuidedFilterAdvanced()
-    todos.model.load(model, checkpoint)
+    device = todos.model.get_device()
+    model = model.to(device)
+    model.eval()
+    print(f"Running tvm model model on {device} ...")
+
+    return model, device
+
+
+def get_autops_model():
+    """Create model."""
+
+    model = guided.Autops()
     device = todos.model.get_device()
     model = model.to(device)
     model.eval()
 
     print(f"Running model on {device} ...")
-
-    todos.data.mkdir("output")
-    if not os.path.exists("output/image_autops.so"):
-        input = torch.randn(1, 3, 512, 512)
-        todos.model.compile(model, device, input, "output/image_autops.so")
-
     model = torch.jit.script(model)
+    todos.data.mkdir("output")
     if not os.path.exists("output/image_autops.torch"):
         model.save("output/image_autops.torch")
 
     return model, device
-
 
 
 def image_predict(input_files, output_dir):
@@ -54,7 +58,7 @@ def image_predict(input_files, output_dir):
     todos.data.mkdir(output_dir)
 
     # load model
-    model, device = get_model()
+    model, device = get_autops_model()
 
     # load files
     image_filenames = todos.data.load_files(input_files)
