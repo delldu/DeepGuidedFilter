@@ -38,8 +38,9 @@ def get_tvm_model():
 
 def get_autops_model():
     """Create model."""
+    base = guided.DeepGuidedFilterAdvanced()
 
-    model = guided.Autops()
+    model = todos.model.ResizePadModel(base)
     device = todos.model.get_device()
     model = model.to(device)
     model.eval()

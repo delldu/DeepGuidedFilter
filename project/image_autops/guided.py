@@ -278,36 +278,3 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         # x_lr
         x_lr = F.interpolate(x_hr, (128, 128), mode="bilinear", align_corners=True)
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
-
-
-class Autops(nn.Module):
-    def __init__(self):
-        super(Autops, self).__init__()
-        self.backbone = DeepGuidedFilterAdvanced().eval()
-
-    def forward(self, x):
-        # Need Resize ?
-        B, C, H, W = x.size()
-        if H > self.backbone.MAX_H or W > self.backbone.MAX_W:
-            s = min(self.backbone.MAX_H / H, self.backbone.MAX_W / W)
-            SH, SW = int(s * H), int(s * W)
-            resize_x = F.interpolate(x, size=(SH, SW), mode="bilinear", align_corners=False)
-        else:
-            resize_x = x
-
-        # Need Pad ?
-        PH, PW = resize_x.size(2), resize_x.size(3)
-        if PH % self.backbone.MAX_TIMES != 0 or PW % self.backbone.MAX_TIMES != 0:
-            r_pad = self.backbone.MAX_TIMES - (PW % self.backbone.MAX_TIMES)
-            b_pad = self.backbone.MAX_TIMES - (PH % self.backbone.MAX_TIMES)
-            resize_pad_x = F.pad(resize_x, (0, r_pad, 0, b_pad), mode="replicate")
-        else:
-            resize_pad_x = resize_x
-
-        with torch.no_grad():
-            y = self.backbone(resize_pad_x)
-
-        y = y[:, :, 0:PH, 0:PW]  # Remove Pads
-        y = F.interpolate(y, size=(H, W), mode="bilinear", align_corners=False)  # Remove Resize
-
-        return y
