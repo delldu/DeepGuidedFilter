@@ -23,8 +23,7 @@ import pdb
 
 def get_tvm_model():
     """
-    TVM model base on torch.jit.trace, much more orignal than torch.jit.script
-    That's why we construct it from DeepGuidedFilterAdvanced
+    TVM model base on torch.jit.trace, that's why we construct it from DeepGuidedFilterAdvanced
     """
 
     model = guided.DeepGuidedFilterAdvanced()
