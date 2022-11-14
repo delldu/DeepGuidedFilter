@@ -38,8 +38,8 @@ def get_tvm_model():
 def get_autops_model():
     """Create model."""
     base = guided.DeepGuidedFilterAdvanced()
-
     model = todos.model.ResizePadModel(base)
+    # model = todos.model.GridTileModel(base)
     device = todos.model.get_device()
     model = model.to(device)
     model.eval()
@@ -73,7 +73,9 @@ def image_predict(input_files, output_dir):
 
         # pytorch recommand clone.detach instead of torch.Tensor(input_tensor)
         orig_tensor = input_tensor.clone().detach()
-        predict_tensor = todos.model.forward(model, device, input_tensor)
+        with torch.no_grad():
+            predict_tensor = model(input_tensor.to(device))
+
         output_file = f"{output_dir}/{os.path.basename(filename)}"
 
         todos.data.save_tensor([orig_tensor, predict_tensor], output_file)

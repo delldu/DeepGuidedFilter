@@ -260,7 +260,7 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         super(DeepGuidedFilterAdvanced, self).__init__(radius, eps)
         self.MAX_H = 2048
         self.MAX_W = 2048
-        self.MAX_TIMES = 4
+        self.MAX_TIMES = 1
         # GPU: 3G, 4ms, CPU: 90ms
 
         self.guided_map = nn.Sequential(
