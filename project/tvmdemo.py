@@ -27,7 +27,7 @@ def compile():
     if not os.path.exists("output/image_autops.so"):
         input = torch.randn(SO_B, SO_C, SO_H, SO_W)
         todos.tvmod.compile(model, device, input, "output/image_autops.so")
-
+    todos.model.reset_device()
 
 def predict(input_files, output_dir):
     model, device = image_autops.get_tvm_model()
@@ -37,7 +37,7 @@ def predict(input_files, output_dir):
     todos.data.mkdir(output_dir)
 
     # load model
-    tvm_model = todos.tvmod.load("output/image_autops.so", "cuda")
+    tvm_model = todos.tvmod.load("output/image_autops.so", str(device))
 
     # load files
     image_filenames = todos.data.load_files(input_files)
