@@ -258,10 +258,10 @@ class DeepGuidedFilter(nn.Module):
 class DeepGuidedFilterAdvanced(DeepGuidedFilter):
     def __init__(self, radius=1, eps=1e-8):
         super(DeepGuidedFilterAdvanced, self).__init__(radius, eps)
-        self.MAX_H = 2048
+        self.MAX_H = 1024
         self.MAX_W = 2048
         self.MAX_TIMES = 1
-        # GPU: 3G, 4ms, CPU: 90ms
+        # GPU: 3G, 60ms, CPU: 180ms
 
         self.guided_map = nn.Sequential(
             nn.Conv2d(3, 15, 1, bias=False), AdaptiveNorm(15), nn.LeakyReLU(0.2, inplace=True), nn.Conv2d(15, 3, 1)

@@ -73,9 +73,7 @@ def image_predict(input_files, output_dir):
 
         # pytorch recommand clone.detach instead of torch.Tensor(input_tensor)
         orig_tensor = input_tensor.clone().detach()
-        with torch.no_grad():
-            predict_tensor = model(input_tensor.to(device))
-
+        predict_tensor = todos.model.forward(model, device, input_tensor)
         output_file = f"{output_dir}/{os.path.basename(filename)}"
 
         todos.data.save_tensor([orig_tensor, predict_tensor], output_file)
