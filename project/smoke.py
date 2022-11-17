@@ -30,8 +30,8 @@ if __name__ == "__main__":
     for count in range(N):
         progress_bar.update(1)
 
-        h = random.randint(0, 32)
-        w = random.randint(0, 32)
+        h = random.randint(-16, 16)
+        w = random.randint(-16, 16)
         x = torch.randn(B, C, H + h, W + w)
         # print("x: ", x.size())
 

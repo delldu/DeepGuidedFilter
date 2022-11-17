@@ -24,7 +24,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/delldu/DeepGuidedFilter.git",
     packages=["image_autops"],
-    package_data={"image_autops": ["models/image_autops.pth"]},
+    package_data={"image_autops": ["models/image_autops.pth", "models/image_smooth.pth"]},
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",

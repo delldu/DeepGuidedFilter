@@ -11,4 +11,5 @@
 
 import image_autops
 
-image_autops.image_predict("images/*.png", "output")
+image_autops.image_autops_predict("images/*.png", "output/autops")
+image_autops.image_smooth_predict("images/*.png", "output/smooth")

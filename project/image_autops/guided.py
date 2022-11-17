@@ -266,7 +266,6 @@ class DeepGuidedFilterAdvanced(DeepGuidedFilter):
         self.guided_map = nn.Sequential(
             nn.Conv2d(3, 15, 1, bias=False), AdaptiveNorm(15), nn.LeakyReLU(0.2, inplace=True), nn.Conv2d(15, 3, 1)
         )
-        self.load_weights()
 
     def load_weights(self, model_path="models/image_autops.pth"):
         self.guided_map.apply(weights_init_identity)
