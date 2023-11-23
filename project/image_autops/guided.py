@@ -44,7 +44,6 @@ def diff_y(input, r: int):
 class BoxFilter(nn.Module):
     def __init__(self, r):
         super().__init__()
-
         self.r = r
 
     def forward(self, x):
@@ -56,23 +55,14 @@ class BoxFilter(nn.Module):
 class FastGuidedFilter(nn.Module):
     def __init__(self, r, eps=1e-5):
         super().__init__()
-
         self.r = r
         self.eps = eps
         self.boxfilter = BoxFilter(r)
 
     def forward(self, lr_x, lr_y, hr_x):
-        n_lrx, c_lrx, h_lrx, w_lrx = lr_x.size()
-        n_lry, c_lry, h_lry, w_lry = lr_y.size()
         n_hrx, c_hrx, h_hrx, w_hrx = hr_x.size()
 
-        # assert n_lrx == n_lry and n_lry == n_hrx
-        # assert c_lrx == c_hrx and (c_lrx == 1 or c_lrx == c_lry)
-        # assert h_lrx == h_lry and w_lrx == w_lry
-        # assert h_lrx > 2 * self.r + 1 and w_lrx > 2 * self.r + 1
-
         ## N
-        # N = self.boxfilter(lr_x.data.new().resize_((1, 1, h_lrx, w_lrx)).fill_(1.0))
         N = self.boxfilter(torch.ones_like(lr_x)[:, 0:1, :, :])
 
         ## mean_x
@@ -163,5 +153,6 @@ class DeepGuidedFilter(nn.Module):
 
     def forward(self, x_hr):
         # x_lr
-        x_lr = F.interpolate(x_hr, (128, 128), mode="bilinear", align_corners=True)
+        B, C, H, W = x_hr.size()
+        x_lr = F.interpolate(x_hr, (H//8, W//8), mode="bilinear", align_corners=False)
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
