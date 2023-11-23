@@ -12,6 +12,6 @@
 import image_autops
 
 image_autops.image_autops_predict("images/autops/*.png", "output/autops")
-image_autops.image_smooth_predict("images/smooth/*.png", "output/smooth")
-image_autops.image_dehaze_predict("images/dehaze/*.png", "output/dehaze")
-image_autops.image_enhance_predict("images/enhance/*.png", "output/enhance")
+
+# image_autops.image_autops_predict("images/FiveK_C/*.jpg", "output/demo/H", horizon=True)
+# image_autops.image_autops_predict("images/FiveK_C/*.jpg", "output/demo/V", horizon=False)

@@ -44,3 +44,16 @@ if __name__ == "__main__":
     mean_time /= N
     print(f"Mean spend {mean_time:0.4f} seconds")
     os.system("nvidia-smi | grep python")
+
+    with torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA]
+    ) as p:
+        for ii in range(100):
+            image = torch.randn(B, C, H, W)
+            with torch.no_grad():
+                y = model(image.to(device))
+            torch.cuda.synchronize()
+        p.step()
+
+    print(p.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
+    os.system("nvidia-smi | grep python")
