@@ -20,7 +20,7 @@ import image_autops
 
 
 def compile():
-    model, device = image_autops.get_tvm_model()
+    model, device = image_autops.get_autops_model()
     SO_B, SO_C, SO_H, SO_W = 1, 3, model.MAX_H, model.MAX_W
 
     todos.data.mkdir("output")
@@ -30,7 +30,7 @@ def compile():
     todos.model.reset_device()
 
 def predict(input_files, output_dir):
-    model, device = image_autops.get_tvm_model()
+    model, device = image_autops.get_autops_model()
     SO_B, SO_C, SO_H, SO_W = 1, 3, model.MAX_H, model.MAX_W
 
     # Create directory to store result

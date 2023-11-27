@@ -12,28 +12,12 @@
 __version__ = "1.0.0"
 
 import os
-from tqdm import tqdm
 import torch
 
 import todos
 from . import guided
 
 import pdb
-
-
-def get_tvm_model():
-    """
-    TVM model base on torch.jit.trace, that's why we construct it from DeepGuidedFilter
-    """
-
-    model = guided.DeepGuidedFilter()
-    device = todos.model.get_device()
-    model = model.to(device)
-    model.eval()
-    print(f"Running tvm model model on {device} ...")
-
-    return model, device
-
 
 def get_autops_model():
     """Create model."""
@@ -44,17 +28,25 @@ def get_autops_model():
     model = model.to(device)
     model.eval()
 
+    # make sure model good for C/C++
     model = torch.jit.script(model)
-
-    print(f"Running model on {device} ...")
+    # https://github.com/pytorch/pytorch/issues/52286
+    torch._C._jit_set_profiling_executor(False)
+    # C++ Reference
+    # torch::jit::getProfilingMode() = false;                                                                                                             
+    # torch::jit::setTensorExprFuserEnabled(false);
     todos.data.mkdir("output")
     if not os.path.exists("output/image_autops.torch"):
         model.save("output/image_autops.torch")
+
+    print(f"Running model on {device} ...")
 
     return model, device
 
 
 def image_autops_predict(input_files, output_dir, horizon=None):
+    from tqdm import tqdm
+
     # Create directory to store result
     todos.data.mkdir(output_dir)
 

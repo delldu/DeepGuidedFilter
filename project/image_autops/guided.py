@@ -133,8 +133,8 @@ def build_lr_net(layer=5):
 class DeepGuidedFilter(nn.Module):
     def __init__(self, radius=1, eps=1e-8):
         super().__init__()
-        self.MAX_H = 2048
-        self.MAX_W = 2048
+        self.MAX_H = 1024
+        self.MAX_W = 1024
         self.MAX_TIMES = 1
         # GPU: 3G, 40ms, CPU: 180ms
 
