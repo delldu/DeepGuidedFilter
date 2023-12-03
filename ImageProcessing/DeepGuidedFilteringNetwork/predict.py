@@ -45,7 +45,7 @@ if not os.path.isdir(args.save_folder):
 
 if args.model in ['guided_filter', 'deep_guided_filter']:
     model = DeepGuidedFilter()
-elif args.model == 'deep_guided_filter_advanced':
+elif args.model == 'deep_guided_filter_advanced': # True
     model = DeepGuidedFilterAdvanced()
 elif args.model == 'deep_conv_guided_filter':
     model = DeepGuidedFilterConvGF()
@@ -57,7 +57,7 @@ else:
 
 model2name = {'guided_filter': 'lr',
               'deep_guided_filter': 'hr',
-              'deep_guided_filter_advanced': 'hr_ad',
+              'deep_guided_filter_advanced': 'hr_ad', # True
               'deep_conv_guided_filter': 'conv_hr',
               'deep_conv_guided_filter_adv': 'conv_hr_ad'}
 model_path = os.path.join('models', args.task, '{}_net_latest.pth'.format(model2name[args.model]))
