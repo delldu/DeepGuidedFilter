@@ -21,12 +21,15 @@ import pdb
 
 def get_autops_model():
     """Create model."""
-    base = guided.DeepGuidedFilter()
-    model = todos.model.ResizePadModel(base)
-
+    model = guided.DeepGuidedFilter()
     device = todos.model.get_device()
     model = model.to(device)
     model.eval()
+
+
+    print(f"Running model on {device} ...")
+
+    # model = torch.compile(model)
 
     # make sure model good for C/C++
     model = torch.jit.script(model)
@@ -39,7 +42,6 @@ def get_autops_model():
     if not os.path.exists("output/image_autops.torch"):
         model.save("output/image_autops.torch")
 
-    print(f"Running model on {device} ...")
 
     return model, device
 
@@ -65,14 +67,9 @@ def image_autops_predict(input_files, output_dir, horizon=None):
         input_tensor = todos.data.load_tensor(filename)
         B, C, H, W = input_tensor.size()
 
-        if horizon is not None:
-            if not ((horizon and W >= H) or (not horizon and H >= W)): # match ?
-                continue
-
         orig_tensor = input_tensor.clone().detach()
         predict_tensor = todos.model.forward(model, device, input_tensor)
         output_file = f"{output_dir}/{os.path.basename(filename)}"
 
         todos.data.save_tensor([orig_tensor, predict_tensor], output_file)
     todos.model.reset_device()
-

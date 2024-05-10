@@ -11,9 +11,9 @@
 
 import image_autops
 
-# image_autops.image_autops_predict("images/autops/*.png", "output/autops")
+image_autops.image_autops_predict("images/autops/*.png", "output/autops")
 
 # image_autops.image_autops_predict("images/FiveK_C/*.jpg", "output/demo/H", horizon=True)
 # image_autops.image_autops_predict("images/FiveK_C/*.jpg", "output/demo/V", horizon=False)
 
-image_autops.image_autops_predict("images/hazy/*.jpg", "output/haze")
+# image_autops.image_autops_predict("images/hazy/*.jpg", "output/haze")

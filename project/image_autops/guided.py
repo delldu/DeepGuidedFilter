@@ -14,22 +14,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import todos
+# import ggml_engine
 import pdb
 
 
-def diff_x(input, r: int):
+def diff_rows(input, r: int):
     assert input.dim() == 4
+    # input.size() -- [1, 1, 50, 64]
+    left = input[:, :, r : 2 * r + 1] # size() -- [1, 1, 2, 64]
+    middle = input[:, :, 2 * r + 1 :] - input[:, :, : -2 * r - 1] # size() -- [1, 1, 47, 64]
+    right = input[:, :, -1:] - input[:, :, -2 * r - 1 : -r - 1] # size() -- [1, 1, 1, 64]
 
-    left = input[:, :, r : 2 * r + 1]
-    middle = input[:, :, 2 * r + 1 :] - input[:, :, : -2 * r - 1]
-    right = input[:, :, -1:] - input[:, :, -2 * r - 1 : -r - 1]
-
-    output = torch.cat([left, middle, right], dim=2)
+    output = torch.cat([left, middle, right], dim=2) # [1, 1, 50, 64]
 
     return output
 
 
-def diff_y(input, r: int):
+def diff_cols(input, r: int):
     assert input.dim() == 4
 
     left = input[:, :, :, r : 2 * r + 1]
@@ -48,8 +50,8 @@ class BoxFilter(nn.Module):
 
     def forward(self, x):
         assert x.dim() == 4
-
-        return diff_y(diff_x(x.cumsum(dim=2), self.r).cumsum(dim=3), self.r)
+        # tensor [x] size: [1, 1, 50, 64], min: 1.0, max: 1.0, mean: 1.0
+        return diff_cols(diff_rows(x.cumsum(dim=2), self.r).cumsum(dim=3), self.r)
 
 
 class FastGuidedFilter(nn.Module):
@@ -58,6 +60,7 @@ class FastGuidedFilter(nn.Module):
         self.r = r
         self.eps = eps
         self.boxfilter = BoxFilter(r)
+
 
     def forward(self, lr_x, lr_y, hr_x):
         n_hrx, c_hrx, h_hrx, w_hrx = hr_x.size()
@@ -97,7 +100,6 @@ class AdaptiveNorm(nn.Module):
 
         self.w_0 = nn.Parameter(torch.Tensor([1.0]))
         self.w_1 = nn.Parameter(torch.Tensor([0.0]))
-
         self.bn = nn.BatchNorm2d(n, momentum=0.999, eps=0.001)
 
     def forward(self, x):
@@ -131,28 +133,37 @@ def build_lr_net(layer=5):
 
 
 class DeepGuidedFilter(nn.Module):
-    def __init__(self, radius=1, eps=1e-8):
+    def __init__(self, radius=1, eps=1e-5):
         super().__init__()
-        self.MAX_H = 1024
-        self.MAX_W = 1024
+        self.MAX_H = 4096
+        self.MAX_W = 4096
         self.MAX_TIMES = 1
-        # GPU: 3G, 40ms, CPU: 180ms
+        # GPU: 7.8G, 70ms
 
         self.lr = build_lr_net()
         self.gf = FastGuidedFilter(radius, eps)
 
         self.guided_map = nn.Sequential(
-            nn.Conv2d(3, 15, 1, bias=False), AdaptiveNorm(15), nn.LeakyReLU(0.2, inplace=True), nn.Conv2d(15, 3, 1)
+            nn.Conv2d(3, 15, 1, bias=False), 
+            AdaptiveNorm(15), 
+            nn.LeakyReLU(0.2, inplace=True), 
+            nn.Conv2d(15, 3, 1)
         )
+
         self.load_weights(model_path="models/image_autops.pth")
 
     def load_weights(self, model_path="models/image_autops.pth"):
         cdir = os.path.dirname(__file__)
         checkpoint = model_path if cdir == "" else cdir + "/" + model_path
-        self.load_state_dict(torch.load(checkpoint))
+        self.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
 
     def forward(self, x_hr):
         # x_lr
         B, C, H, W = x_hr.size()
+
         x_lr = F.interpolate(x_hr, (H//8, W//8), mode="bilinear", align_corners=False)
+
         return self.gf(self.guided_map(x_lr), self.lr(x_lr), self.guided_map(x_hr))
+
+if __name__ == "__main__":
+    model = DeepGuidedFilter()
