@@ -63,16 +63,11 @@ static ggml_tensor_t *ggml_nn_cols(struct ggml_context* ctx, ggml_tensor_t *x, i
 
 ggml_tensor_t *ggml_box_filter(struct ggml_context* ctx, ggml_tensor_t *x, int r)
 {
-    // ggml_tensor_dump("box_filter1", x);
     x = ggml_cumsum(ctx, x, 1/*dim*/); // cum sum on H
-    // ggml_tensor_dump("box_filter2", x);
     x = ggml_diff_rows(ctx, x, r);
-    // ggml_tensor_dump("box_filter3", x);
 
     x = ggml_cumsum(ctx, x, 0/*dim*/); // cum sum on W
-    // ggml_tensor_dump("box_filter4", x);
     x = ggml_nn_cols(ctx, x, r);
-    // ggml_tensor_dump("box_filter5", x);
 
     return x;
 }
@@ -118,39 +113,11 @@ int autops_predict(int device, int n, char *input_files[], char *output_dir)
             tensor_saveas_image(output_tensor, 0 /*batch 0*/, output_fname);
             tensor_destroy(output_tensor);
         }
-
-        TENSOR *xxxx_test = net.get_output_tensor("x_0");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** x_0", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-        xxxx_test = net.get_output_tensor("x_1");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** x_1", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-        xxxx_test = net.get_output_tensor("x_2");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** x_2", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-        xxxx_test = net.get_output_tensor("x_3");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** x_3", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-        xxxx_test = net.get_output_tensor("x_4");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** x_4", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-
-        xxxx_test = net.get_output_tensor("xxxx_test");
-        if (tensor_valid(xxxx_test)) {
-            tensor_show("********************** xxxx_test", xxxx_test);
-            tensor_destroy(xxxx_test);
-        }
-
+        // TENSOR *xxxx_test = net.get_output_tensor("x_0");
+        // if (tensor_valid(xxxx_test)) {
+        //     tensor_show("********************** x_0", xxxx_test);
+        //     tensor_destroy(xxxx_test);
+        // }
         tensor_destroy(input_tensor);
     }
 
