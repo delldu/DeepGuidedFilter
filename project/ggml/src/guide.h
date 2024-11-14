@@ -12,9 +12,13 @@ ggml_tensor_t *ggml_box_filter(struct ggml_context* ctx, ggml_tensor_t *x, int r
 
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 
+// ggml_set_name(out, "xxxx_test");
+// ggml_set_output(out);
+
 /*
  BoxFilter() */
 
+// CPU OK, CUDA NOK ----------------------------
 struct BoxFilter {
     int r = 1;
 
@@ -27,7 +31,25 @@ struct BoxFilter {
     }
 
     ggml_tensor_t* forward(struct ggml_context* ctx, ggml_tensor_t* x) {
-        return ggml_box_filter(ctx, x, r);
+        // x = ggml_nn_arange(ctx, x);
+        ggml_tensor_t* y = ggml_box_filter(ctx, x, r);
+
+        // ggml_set_name(y, "xxxx_test");
+        // ggml_set_output(y);
+
+        // Info: ********************** xxxx_test Tensor: 1x3x85x128
+        // min: 0.0079, max: 8.9523, mean: 2.9688
+
+        // Info: ********************** xxxx_test Tensor: 1x3x85x128
+        // min: 0.0079, max: 8.9642, mean: 4.4413
+
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: 0.007904, max: 8.964172, mean: 4.441317
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: 0.007904, max: 8.964172, mean: 4.441317
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: 0.007904, max: 8.964172, mean: 4.441317
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: 0.007904, max: 8.964172, mean: 4.441317
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: 0.007904, max: 8.964172, mean: 4.441317
+
+        return y;
     }
 };
 
@@ -36,6 +58,7 @@ struct BoxFilter {
   (boxfilter): BoxFilter()
 ) */
 
+// CPU OK, CUDA NOK --------------------------
 struct FastGuidedFilter {
     int r = 1;
     float eps = 1e-08;
@@ -51,39 +74,60 @@ struct FastGuidedFilter {
     }
 
     ggml_tensor_t* forward(struct ggml_context* ctx, ggml_tensor_t* x1, ggml_tensor_t* x2, ggml_tensor_t* x3) {
+        // x1 = ggml_nn_arange(ctx, x1);
+        // x2 = ggml_nn_arange(ctx, x2);
+        // x3 = ggml_nn_arange(ctx, x3);
+
+
         // n_hrx, c_hrx, h_hrx, w_hrx = hr_x.size()
         int W3 = (int)x3->ne[0];
         int H3 = (int)x3->ne[1];
         int C3 = (int)x3->ne[2];
         int B3 = (int)x3->ne[3];
+        ggml_tensor_dump("--------x3", x3);
 
-        ggml_tensor_t *N = ggml_dup(ctx, x3);
-        N = ggml_constant(ctx, N, 1.0);
+        ggml_tensor_t *N = ggml_dup(ctx, x1);
+        N = ggml_clamp(ctx, N, 1.0, 1.0); // ggml_constant(ctx, N, 1.0);
+        ggml_tensor_dump("N1", N);
         N = boxfilter.forward(ctx, N);
+        ggml_tensor_dump("N2", N);
 
         ggml_tensor_t *mean_x = boxfilter.forward(ctx, x1);
+        ggml_tensor_dump("mean_x1", mean_x);
         mean_x = ggml_div(ctx, mean_x, N);
+        ggml_tensor_dump("mean_x2", mean_x);
 
         ggml_tensor_t *mean_y = boxfilter.forward(ctx, x2);
+        ggml_tensor_dump("mean_y1", mean_y);
         mean_y = ggml_div(ctx, mean_y, N);
+        ggml_tensor_dump("mean_y2", mean_y);
 
         ggml_tensor_t *mean_xy = ggml_mul(ctx, mean_x, mean_y);
+        ggml_tensor_dump("mean_xy", mean_y);
 
         // ## cov_xy
         // cov_xy = self.boxfilter(lr_x * lr_y) / N - mean_x * mean_y
         ggml_tensor_t *cov_xy = ggml_mul(ctx, x1, x2);
+        ggml_tensor_dump("cov_xy1", cov_xy);
         cov_xy = boxfilter.forward(ctx, cov_xy);
+        ggml_tensor_dump("cov_xy2", cov_xy);
         cov_xy = ggml_div(ctx, cov_xy, N);
+        ggml_tensor_dump("cov_xy3", cov_xy);
         cov_xy = ggml_sub(ctx, cov_xy, mean_xy); 
+        ggml_tensor_dump("cov_xy4", cov_xy);
 
         // ## var_x
         // var_x = self.boxfilter(lr_x * lr_x) / N - mean_x * mean_x
         ggml_tensor_t *var_x = ggml_mul(ctx, x1, x1);
+        ggml_tensor_dump("var_x1", var_x);
         var_x = boxfilter.forward(ctx, var_x);
+        ggml_tensor_dump("var_x2", var_x);
         var_x = ggml_div(ctx, var_x, N);
+        ggml_tensor_dump("var_x3", var_x);
         var_x = ggml_sub(ctx, var_x, mean_xy);
+        ggml_tensor_dump("var_x4", var_x);
         var_x = ggml_add_constant(ctx, var_x, eps);
-
+        ggml_tensor_dump("var_x5", var_x);
 
         // ## A
         // A = cov_xy / (var_x + self.eps)
@@ -91,11 +135,17 @@ struct FastGuidedFilter {
         // ## b
         // b = mean_y - A * mean_x
         ggml_tensor_t *A = ggml_div(ctx, cov_xy, var_x);
+        ggml_tensor_dump("A", A);
         ggml_tensor_t *t = ggml_mul(ctx, A, mean_x);
+        ggml_tensor_dump("t", t);
         ggml_tensor_t *b = ggml_sub(ctx, mean_y, t);
+        ggml_tensor_dump("b", b);
 
         ggml_tensor_t *mean_A = ggml_upscale_ext(ctx, A, W3, H3, C3, B3);
+        ggml_tensor_dump("mean_A", mean_A);
+
         ggml_tensor_t *mean_b = ggml_upscale_ext(ctx, b, W3, H3, C3, B3);
+        ggml_tensor_dump("mean_b", mean_b);
 
         // ## mean_A; mean_b
         // mean_A = F.interpolate(A, (h_hrx, w_hrx), mode="bilinear", align_corners=False)
@@ -103,9 +153,24 @@ struct FastGuidedFilter {
         // mean_b = F.interpolate(b, (h_hrx, w_hrx), mode="bilinear", align_corners=False)
 
         // output = mean_A * hr_x + mean_b
+        ggml_tensor_dump("x3", x3);
         ggml_tensor_t *output = ggml_mul(ctx, mean_A, x3);
+        ggml_tensor_dump("output1", output);
         output = ggml_add(ctx, output, mean_b);
+        ggml_tensor_dump("output2", output);
         output = ggml_clamp(ctx, output, 0.0, 1.0);
+
+        output = ggml_cont(ctx, output);
+
+        ggml_set_name(output, "xxxx_test");
+        ggml_set_output(output);
+
+        // Info: ********************** xxxx_test Tensor: 1x3x341x512
+        // min: 0.0000, max: 1.0000, mean: 0.5000
+        // Info: ********************** xxxx_test Tensor: 1x3x341x512
+        // min: 0.0000, max: nan, mean: nan
+
+        // tensor [xxxx_test] size: [1, 3, 341, 512], min: 0.001427, max: 0.998522, mean: 0.499993
 
         return output;
         // return output.clamp(0.0, 1.0)
@@ -127,6 +192,8 @@ struct AdaptiveNorm {
     void create_weight_tensors(ggml_context_t* ctx) {
         w_0 = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
         w_1 = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 1);
+        // tensor [self.w_0] size: [1], 1.714943
+        // tensor [self.w_1] size: [1], 1.024461
 
         bn.num_features = num_features;
         bn.eps = 0.001;
@@ -148,20 +215,32 @@ struct AdaptiveNorm {
 
     ggml_tensor_t* forward(struct ggml_context* ctx, ggml_tensor_t* x) {
         // y = self.w_0 * x + self.w_1 * self.bn(x)
-        ggml_tensor_dump("xx0", x);
-        x = bn.forward(ctx, x);
-        ggml_tensor_dump("xx1", x);
-        // x = ggml_mul(ctx, w_1, x);
-        // ggml_tensor_dump("xx2", x);
+        // ggml_tensor_dump("xx0", x);
+
+        // x = ggml_nn_arange(ctx, x);
+        ggml_tensor_t *x1 = ggml_mul(ctx, x, w_0);
+        ggml_tensor_t *x2 = ggml_mul(ctx, bn.forward(ctx, x), w_1);
+        x = ggml_add(ctx, x1, x2);
+
+        // x = bn.forward(ctx, x);
+        // x = ggml_mul(ctx, x, w_1);
         // x = ggml_add(ctx, x, w_0);
-        // ggml_tensor_dump("xx3", x);
-        // xxxx_debug
+        x = ggml_cont(ctx, x);
+
+        // ggml_set_name(x, "xxxx_test");
+        // ggml_set_output(x);
+
+        // Info: ********************** xxxx_test Tensor: 1x15x341x512
+        // min: -0.4744, max: 19.2170, mean: 5.3924
+
+        // tensor [xxxx_test] size: [1, 15, 341, 512], min: -2.373173, max: 19.225903, mean: 5.180735
+
 
     	return x;
     }
 };
 
-
+// ------------------------------------------------------------------
 struct GuidedMap {
     struct Conv2d conv0;
     struct AdaptiveNorm bn1;
@@ -222,21 +301,27 @@ struct GuidedMap {
     //         struct ggml_tensor  * a, float negative_slope, bool inplace);
 
     ggml_tensor_t* forward(struct ggml_context* ctx, ggml_tensor_t* x) {
-        ggml_tensor_dump("x1", x);
+        // x = ggml_nn_arange(ctx, x);
+
+        // ggml_tensor_dump("x1", x);
         // xxxx_debug
         x = conv0.forward(ctx, x);
-        ggml_tensor_dump("x2", x);
+        // ggml_tensor_dump("x2", x);
         x = bn1.forward(ctx, x);
-        ggml_tensor_dump("x3", x);
+        // ggml_tensor_dump("x3", x);
         x = ggml_leaky_relu(ctx, x, 0.2, true /*inplace*/);
-        ggml_tensor_dump("x4", x);
+        // ggml_tensor_dump("x4", x);
         x = conv3.forward(ctx, x);
-        ggml_tensor_dump("x5", x);
+        // ggml_tensor_dump("x5", x);
+
+        // Info: ********************** xxxx_test Tensor: 1x3x341x512
+        // min: -23.5009, max: 25.5696, mean: -0.5659
 
         return x;
     }
 };
 
+// ---------------------------------------------------------
 struct LowGuidedMap {
     struct Conv2d l_0;
     struct AdaptiveNorm l_1;
@@ -410,6 +495,8 @@ struct LowGuidedMap {
     }
 
     ggml_tensor_t* forward(struct ggml_context* ctx, ggml_tensor_t* x) {
+        // x = ggml_nn_arange(ctx, x);
+
         x = l_0.forward(ctx, x);
         x = l_1.forward(ctx, x);
         x = ggml_leaky_relu(ctx, x, 0.2, true /*inplace*/);
@@ -429,6 +516,14 @@ struct LowGuidedMap {
         x = l_16.forward(ctx, x);
         x = ggml_leaky_relu(ctx, x, 0.2, true /*inplace*/);
         x = l_18.forward(ctx, x);
+
+        // x = ggml_cont(ctx, x);
+        // ggml_set_name(x, "xxxx_test");
+        // ggml_set_output(x);
+
+        // Info: ********************** xxxx_test Tensor: 1x3x85x128
+        // min: -0.3747, max: 1.1702, mean: 0.4043
+        // tensor [xxxx_test] size: [1, 3, 85, 128], min: -0.374559, max: 1.170218, mean: 0.403946
 
         return x;
     }
@@ -493,17 +588,54 @@ struct DeepGuidedFilter : GGMLNetwork {
         ggml_tensor_dump("start_x", x);
 
         ggml_tensor_t *x_lr = ggml_upscale_ext(ctx, x, (W/4), (H/4), C, B);
-        ggml_tensor_dump("x_lr", x_lr);
+        // ggml_tensor_dump("x_lr", x_lr);
+        ggml_set_name(x_lr, "x_0");
+        ggml_set_output(x_lr);
 
         ggml_tensor_t *x_1 = guided_map.forward(ctx, x_lr);
-        ggml_tensor_dump("x_1", x_1);
+        // ggml_tensor_dump("x_1", x_1);
+        x_1 = ggml_cont(ctx, x_1);
+        ggml_set_name(x_1, "x_1");
+        ggml_set_output(x_1);
+
         ggml_tensor_t *x_2 = lr.forward(ctx, x_lr);
-        ggml_tensor_dump("x_2", x_2);
-        ggml_tensor_t *x_3 = guided_map.forward(ctx, x_lr);
-        ggml_tensor_dump("x_3", x_3);
+        // ggml_tensor_dump("x_2", x_2);
+        x_2 = ggml_cont(ctx, x_2);
+        ggml_set_name(x_2, "x_2");
+        ggml_set_output(x_2);
+
+        ggml_tensor_dump("---> x", x);
+        ggml_tensor_t *x_3 = guided_map.forward(ctx, x);
+        // ggml_tensor_dump("x_3", x_3);
+        x_3 = ggml_cont(ctx, x_3);
+        ggml_set_name(x_3, "x_3");
+        ggml_set_output(x_3);
 
         ggml_tensor_t *y = gf.forward(ctx, x_1, x_2, x_3);
-        ggml_tensor_dump("y", y);
+        // ggml_tensor_dump("y", y);
+        y = ggml_cont(ctx, y);
+        ggml_set_name(y, "x_4");
+        ggml_set_output(y);
+
+        // Info: ********************** x_0 Tensor: 1x3x85x128
+        // min: 0.0549, max: 0.7059, mean: 0.3521
+
+        // Info: ********************** x_1 Tensor: 1x3x85x128
+        // min: -14.8681, max: 19.6397, mean: 1.3930
+
+        // Info: ********************** x_2 Tensor: 1x3x85x128
+        // min: -inf, max: -inf, mean: nan
+        // Info: ********************** x_3 Tensor: 1x3x341x512
+        // min: -19.6884, max: 20.3428, mean: 1.4013
+        // Info: ********************** x_4 Tensor: 1x3x341x512
+        // min: nan, max: nan, mean: nan
+
+
+        // tensor [x_0] size: [1, 3, 85, 128], min: 0.072457, max: 0.713841, mean: 0.350823
+        // tensor [x_1] size: [1, 3, 85, 128], min: -29.092403, max: 25.128359, mean: 0.740151
+        // tensor [x_2] size: [1, 3, 85, 128], min: -0.070175, max: 0.766517, mean: 0.313738
+        // tensor [x_3] size: [1, 3, 341, 512], min: -35.474194, max: 30.698671, mean: 0.738294
+        // tensor [x_4] size: [1, 3, 341, 512], min: 0.0, max: 0.893776, mean: 0.316156
 
         return y;
     }
